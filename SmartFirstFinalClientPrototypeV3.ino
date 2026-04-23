@@ -12,13 +12,14 @@ static const char* SERVER_BASE_URL = "http://172.20.10.2:1234";
 bool isFirstUpload = true;
 
 // --- PINS & PORTS ---
-#define PTT_PIN   27  
-#define MIC_WS    25  
-#define MIC_SD    33  
-#define MIC_SCK   26  
-#define SPK_DOUT  14  
-#define SPK_BCLK  32  
-#define SPK_LRC   22  
+#define PTT_PIN   21 
+#define MIC_WS    19  
+#define MIC_SD    23  
+#define MIC_SCK   18
+#define SPK_DOUT  4  
+#define SPK_BCLK  22  
+#define SPK_LRC   5 
+#define LED_PIN 33 
 
 #define I2S_MIC_PORT I2S_NUM_0 
 #define I2S_SPK_PORT I2S_NUM_1 
@@ -95,10 +96,10 @@ void streamAndPlay() {
       };
       
       i2s_pin_config_t spk_pins = {
-          .bck_io_num = 32,
-          .ws_io_num = 22,
-          .data_out_num = 14,
-          .data_in_num = -1 // Explicitly disable input
+          .bck_io_num = 22,    // Was 32
+          .ws_io_num = 5,      // Was 22
+          .data_out_num = 4,   // Was 14
+          .data_in_num = -1 
       };
 
       i2s_driver_install(I2S_SPK_PORT, &spk_cfg, 0, NULL);
@@ -176,7 +177,7 @@ bool uploadFileMultipartRaw(const char* url, const char* pathOnFs) {
   unsigned long startWait = millis();
   bool triggerFound = false;
 
-  while (client.connected() && (millis() - startWait < 20000)) {
+  while (client.connected() && (millis() - startWait < 70000)) {
     while (client.available()) {
       char c = client.read();
       response += c;
@@ -240,6 +241,7 @@ void setupMic() {
 void setup() {
   Serial.begin(115200);
   pinMode(PTT_PIN, INPUT_PULLUP);
+  pinMode(LED_PIN, OUTPUT);
   LittleFS.begin(true);
   LittleFS.format();
   
@@ -276,12 +278,14 @@ void loop() {
         dataBytes = 0; // Reset this globally! 
         recording = true;
         Serial.println("Recording started...");
+        digitalWrite(LED_PIN, HIGH);
     }
   }
 
   // STOP & UPLOAD
   if (!held && wasHeld && recording) {
     recording = false; // Stop recording immediately
+    digitalWrite(LED_PIN, LOW);
     
     finalize_wav_header(wavFile, dataBytes);
     wavFile.close(); 
